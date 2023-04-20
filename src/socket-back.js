@@ -1,18 +1,24 @@
-import io from "./server.js"
+import { atualizaDocumento, encontrarDocumento } from "./documentosDb.js";
+import io from "./servidor.js";
 
-io.on('connection', (socket) => {
-    console.log(`Um cliente se conectou, socket: ${socket.id}`)
+io.on("connection", (socket) => {
+  console.log("Um cliente se conectou! ID:", socket.id);
 
-    socket.on("selecionar-documento", (nomeDocumento) => {
-        socket.join(nomeDocumento)
-    })
+  socket.on("selecionar_documento", async (nomeDocumento, devolverTexto) => {
+    socket.join(nomeDocumento);
 
-    socket.on("texto_editor", ({texto, nomeDocumento}) => {
-        socket.to(nomeDocumento).emit("texto_editor_clientes", texto)
-    })
+    const documento = await encontrarDocumento(nomeDocumento);
 
-    socket.on("disconnect", (motivo) => {
-        console.log(`Servidor desconectado! Motivo: ${motivo}`);
-    });
+    if (documento) {
+      devolverTexto(documento.texto);
+    }
+  });
 
-})
+  socket.on("texto_editor", async ({ texto, nomeDocumento }) => {
+    const atualizacao = await atualizaDocumento(nomeDocumento, texto);
+
+    if (atualizacao.modifiedCount) {
+      socket.to(nomeDocumento).emit("texto_editor_clientes", texto);
+    }
+  });
+});
